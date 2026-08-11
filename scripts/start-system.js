@@ -4,16 +4,16 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 
 console.log('Iniciando sistema Miño Goup...');
-console.log('Panel: http://localhost:5176/pwa/');
+console.log('Sistema premium: http://localhost:3000/premium/');
 
-const panel = spawn(process.execPath, ['scripts/panel-server.js'], {
+const online = spawn(process.execPath, ['scripts/online-server.js'], {
   cwd: root,
   stdio: 'ignore',
   windowsHide: true,
   detached: true
 });
 
-panel.unref();
+online.unref();
 
 const bot = spawn(process.execPath, ['index.js'], {
   cwd: root,

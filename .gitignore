@@ -6,5 +6,7 @@ ventas.csv
 ventas.xlsx
 leads.csv
 comprobantes-usados.json
+usuarios.json
+qr-scans.json
 .env
 npm-debug.log*

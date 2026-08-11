@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node scripts/start-system.js",
     "bot": "node index.js",
-    "panel": "node scripts/panel-server.js"
+    "panel": "node scripts/panel-server.js",
+    "online": "node scripts/online-server.js"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.8",

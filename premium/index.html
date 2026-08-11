@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#080808" />
+    <title>Miño Goup Premium</title>
+    <link rel="manifest" href="/premium/manifest.webmanifest" />
+    <link rel="stylesheet" href="/premium/styles.css" />
+  </head>
+  <body>
+    <main id="login" class="login">
+      <section class="login__brand">
+        <img src="/assets/logo.png" alt="Miño Goup" />
+        <p>Sistema premium</p>
+        <h1>Miño Goup</h1>
+        <span>Toyota Vitz 2013 rojo candy</span>
+      </section>
+      <form class="login__form" id="loginForm">
+        <label>Usuario<input id="username" autocomplete="username" required /></label>
+        <label>Contraseña<input id="password" type="password" autocomplete="current-password" required /></label>
+        <button class="primary" type="submit">Entrar</button>
+        <small>Admin inicial: admin / admin123</small>
+      </form>
+    </main>
+
+    <main id="app" class="app" hidden>
+      <header class="topbar">
+        <img src="/assets/logo.png" alt="Miño Goup" />
+        <div>
+          <strong id="userName">Miño Goup</strong>
+          <span id="userRole">Panel</span>
+        </div>
+        <button class="ghost" id="logout">Salir</button>
+      </header>
+
+      <section class="hero">
+        <img src="/assets/mino.png" alt="Toyota Vitz" />
+        <div>
+          <p>Edicion unica</p>
+          <h1>La joya del sorteo</h1>
+          <span>Ventas, boletas, vendedores y verificacion QR.</span>
+        </div>
+      </section>
+
+      <nav class="tabs">
+        <button class="tab is-active" data-view="sell">Vender</button>
+        <button class="tab" data-view="control">Control</button>
+        <button class="tab admin-only" data-view="sellers">Vendedores</button>
+        <button class="tab admin-only" data-view="scanner">QR</button>
+      </nav>
+
+      <section id="sell" class="view is-visible">
+        <div class="card">
+          <p>Venta rapida</p>
+          <h2>Cargar cliente</h2>
+          <form id="saleForm" class="form">
+            <label class="admin-only">Vendedor<select id="saleSeller"></select></label>
+            <label>Cliente<input id="customer" placeholder="Nombre y apellido" required /></label>
+            <div class="two">
+              <label>CI<input id="ci" placeholder="Documento" required /></label>
+              <label>Telefono<input id="phone" placeholder="+595..." /></label>
+            </div>
+            <label>Boletas<input id="quantity" type="number" min="1" max="100" value="1" required /></label>
+            <button class="primary" type="submit">Generar boleta</button>
+          </form>
+        </div>
+        <div class="result" id="saleResult"></div>
+      </section>
+
+      <section id="control" class="view">
+        <div class="metrics">
+          <article><span>Total</span><strong id="mTotal">0 Gs.</strong></article>
+          <article><span>Boletas</span><strong id="mTickets">0</strong></article>
+          <article><span>Comision</span><strong id="mCommission">0 Gs.</strong></article>
+        </div>
+        <div class="card">
+          <p>Ventas</p>
+          <h2>Ultimos movimientos</h2>
+          <div id="salesList" class="list"></div>
+        </div>
+      </section>
+
+      <section id="sellers" class="view admin-only">
+        <div class="card">
+          <p>Equipo</p>
+          <h2>Crear vendedor</h2>
+          <form id="sellerForm" class="form">
+            <label>Nombre<input id="sellerName" placeholder="Ej: Richar" required /></label>
+            <div class="two">
+              <label>Codigo<input id="sellerCode" placeholder="RICHAR" required /></label>
+              <label>Comision<input id="sellerCommission" type="number" value="200" min="0" step="100" /></label>
+            </div>
+            <div class="two">
+              <label>Usuario<input id="sellerUser" placeholder="richar" required /></label>
+              <label>Contraseña<input id="sellerPass" placeholder="richar123" required /></label>
+            </div>
+            <button class="primary" type="submit">Crear acceso</button>
+          </form>
+        </div>
+        <div class="card">
+          <p>Vendedores</p>
+          <h2>Accesos activos</h2>
+          <div id="sellerList" class="list"></div>
+        </div>
+      </section>
+
+      <section id="scanner" class="view admin-only">
+        <div class="card">
+          <p>Seguridad</p>
+          <h2>Verificar QR</h2>
+          <video id="qrVideo" playsinline muted></video>
+          <div class="two">
+            <button class="primary" id="startScanner">Escanear</button>
+            <button class="ghost" id="stopScanner">Detener</button>
+          </div>
+          <label>O pega el codigo QR<input id="qrManual" placeholder="MINO-GOUP|NRO:12345..." /></label>
+          <button class="primary" id="verifyManual">Verificar</button>
+        </div>
+        <div id="qrResult" class="result"></div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast"></div>
+    <script src="/premium/app.js"></script>
+  </body>
+</html>

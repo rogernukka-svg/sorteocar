@@ -1,0 +1,71 @@
+:root {
+  --bg: #090909;
+  --panel: #fffaf0;
+  --paper: #f5efe3;
+  --ink: #16130d;
+  --muted: #786f5e;
+  --gold: #d8a72d;
+  --line: #e3d3aa;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top, #3c2416, #090909 46%); color: var(--ink); }
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+
+.login, .app { width: min(980px, 100%); margin: 0 auto; padding: 16px; }
+.login { min-height: 100vh; display: grid; place-items: center; gap: 18px; }
+.login__brand, .login__form, .card, .metrics article, .result { background: rgba(255, 250, 240, 0.96); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 22px 60px rgba(0,0,0,.25); }
+.login__brand { width: min(430px, 100%); padding: 26px; text-align: center; }
+.login__brand img { width: 104px; height: 104px; object-fit: cover; border-radius: 14px; background: #000; animation: float 4s ease-in-out infinite; }
+.login__brand p, .card p, .hero p { margin: 0; color: var(--gold); font-weight: 800; text-transform: uppercase; font-size: 12px; }
+.login__brand h1 { margin: 10px 0 6px; font-size: 42px; letter-spacing: 0; }
+.login__brand span, .hero span, .meta { color: var(--muted); }
+.login__form { width: min(430px, 100%); padding: 18px; display: grid; gap: 12px; }
+
+.topbar { height: 68px; display: flex; align-items: center; gap: 12px; color: white; }
+.topbar img { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; background: #000; }
+.topbar strong, .topbar span { display: block; }
+.topbar span { color: #ead9a2; font-size: 13px; }
+.topbar .ghost { margin-left: auto; }
+
+.hero { min-height: 300px; position: relative; overflow: hidden; border-radius: 16px; background: #000; margin-bottom: 14px; }
+.hero img { width: 100%; height: 100%; min-height: 300px; display: block; object-fit: cover; opacity: .92; }
+.hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent, rgba(0,0,0,.82)); }
+.hero div { position: absolute; left: 22px; right: 22px; bottom: 22px; z-index: 1; color: white; }
+.hero h1 { margin: 6px 0; font-size: clamp(34px, 8vw, 64px); line-height: .95; letter-spacing: 0; }
+
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; position: sticky; top: 0; z-index: 5; }
+.tab, .primary, .ghost { min-height: 46px; border-radius: 10px; border: 1px solid var(--line); font-weight: 800; }
+.tab { background: var(--panel); color: var(--ink); }
+.tab.is-active, .primary { background: var(--gold); color: #161006; border-color: var(--gold); }
+.ghost { background: rgba(255,255,255,.12); color: inherit; padding: 0 14px; }
+.topbar .ghost { color: white; border-color: rgba(255,255,255,.26); }
+
+.view { display: none; gap: 14px; }
+.view.is-visible { display: grid; }
+.card, .result { padding: 18px; margin-bottom: 14px; }
+.card h2 { margin: 4px 0 14px; font-size: 26px; }
+.form { display: grid; gap: 12px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+label { display: grid; gap: 6px; font-size: 13px; font-weight: 800; color: #4b422f; }
+input, select { width: 100%; min-height: 46px; border-radius: 10px; border: 1px solid #d8c79f; background: #fffdfa; padding: 0 12px; color: var(--ink); }
+
+.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.metrics article { padding: 16px; }
+.metrics span { color: var(--muted); font-size: 13px; }
+.metrics strong { display: block; margin-top: 5px; font-size: 28px; }
+.list { display: grid; gap: 10px; }
+.item { padding: 14px; border-radius: 10px; border: 1px solid var(--line); background: #fffdf8; }
+.item strong, .item span { display: block; }
+.item a { color: #5d4100; font-weight: 800; }
+
+#qrVideo { width: 100%; max-height: 380px; background: #111; border-radius: 12px; margin-bottom: 10px; }
+.result.ok { border-color: #3da35d; }
+.result.bad { border-color: #cc3333; }
+.toast { position: fixed; left: 14px; right: 14px; bottom: 14px; min-height: 46px; display: grid; place-items: center; background: #111; color: white; border: 1px solid var(--gold); border-radius: 12px; opacity: 0; transform: translateY(12px); transition: 160ms; pointer-events: none; }
+.toast.is-visible { opacity: 1; transform: translateY(0); }
+
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@media (max-width: 640px) { .tabs, .metrics, .two { grid-template-columns: 1fr; } .hero { min-height: 360px; } .hero img { min-height: 360px; } }
