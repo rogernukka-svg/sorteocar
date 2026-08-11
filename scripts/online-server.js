@@ -8,6 +8,8 @@ const QRCode = require('qrcode');
 const root = path.join(__dirname, '..');
 const port = Number(process.env.PORT || process.env.ONLINE_PORT || 3000);
 const secret = process.env.APP_SECRET || 'cambia-este-secreto-mino-goup';
+const supabaseUrl = String(process.env.SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
 
 const CONFIG = {
   telefonoBot: '595994124451',
@@ -40,6 +42,8 @@ const mime = {
   '.jpeg': 'image/jpeg',
   '.pdf': 'application/pdf'
 };
+
+const hasSupabase = Boolean(supabaseUrl && supabaseKey);
 
 for (const dir of [paths.tickets, paths.receipts]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -85,6 +89,43 @@ function readJson(filePath, fallback) {
 
 function writeJson(filePath, data) {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+}
+
+async function supabaseRequest(table, { method = 'GET', query = '', body = null, prefer = '' } = {}) {
+  if (!hasSupabase) throw new Error('Supabase no configurado');
+  const url = `${supabaseUrl}/rest/v1/${table}${query}`;
+  const headers = {
+    apikey: supabaseKey,
+    Authorization: `Bearer ${supabaseKey}`,
+    'Content-Type': 'application/json'
+  };
+  if (prefer) headers.Prefer = prefer;
+  const response = await fetch(url, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!response.ok) {
+    throw new Error(data?.message || data?.hint || `Supabase ${response.status}`);
+  }
+  return data;
+}
+
+function mapUser(row) {
+  return {
+    ...row,
+    passwordHash: row.passwordHash || row.password_hash || '',
+    sellerCode: row.sellerCode || row.seller_code || ''
+  };
+}
+
+function mapSeller(row) {
+  return {
+    ...row,
+    createdAt: row.createdAt || row.created_at || ''
+  };
 }
 
 function csv(value) {
@@ -171,7 +212,30 @@ function ensureFiles() {
   if (changed) writeJson(paths.users, usersData);
 }
 
-ensureFiles();
+async function ensureStorage() {
+  ensureFiles();
+  if (!hasSupabase) return;
+
+  const adminUser = process.env.ADMIN_USER || 'admin';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const users = await supabaseRequest('app_users', {
+    query: `?role=eq.admin&select=id&limit=1`
+  });
+  if (users.length === 0) {
+    await supabaseRequest('app_users', {
+      method: 'POST',
+      body: [{
+        id: crypto.randomUUID(),
+        name: 'Administrador',
+        username: adminUser,
+        role: 'admin',
+        password_hash: sha(adminPassword),
+        seller_code: ''
+      }],
+      prefer: 'return=representation'
+    });
+  }
+}
 
 function normalizeCode(value) {
   return String(value || '')
@@ -210,15 +274,25 @@ function verifyToken(token) {
 }
 
 function getAuth(req) {
+  throw new Error('Usa getAuthAsync');
+}
+
+async function getAuthAsync(req) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : '';
   const payload = verifyToken(token);
   if (!payload) return null;
+  if (hasSupabase) {
+    const users = await supabaseRequest('app_users', {
+      query: `?id=eq.${encodeURIComponent(payload.id)}&select=*`
+    });
+    return users[0] ? mapUser(users[0]) : null;
+  }
   return readJson(paths.users, { users: [] }).users.find((user) => user.id === payload.id) || null;
 }
 
-function requireAuth(req, res, role = null) {
-  const user = getAuth(req);
+async function requireAuth(req, res, role = null) {
+  const user = await getAuthAsync(req);
   if (!user) {
     json(res, 401, { error: 'Inicia sesion de nuevo' });
     return null;
@@ -234,8 +308,20 @@ function readSellers() {
   return readJson(paths.sellers, { sellers: [] }).sellers || [];
 }
 
+async function readSellersAsync() {
+  if (!hasSupabase) return readSellers();
+  const sellers = await supabaseRequest('sellers', { query: '?select=*&order=created_at.desc' });
+  return sellers.map(mapSeller);
+}
+
 function writeSellers(sellers) {
   writeJson(paths.sellers, { sellers });
+}
+
+async function readUsersAsync() {
+  if (!hasSupabase) return readJson(paths.users, { users: [] }).users || [];
+  const users = await supabaseRequest('app_users', { query: '?select=*' });
+  return users.map(mapUser);
 }
 
 function readSales() {
@@ -250,6 +336,11 @@ function readSales() {
     });
     return row;
   });
+}
+
+async function readSalesAsync() {
+  if (!hasSupabase) return readSales();
+  return supabaseRequest('sales', { query: '?select=*&order=created_at.desc' });
 }
 
 function appendSale(row) {
@@ -273,9 +364,22 @@ function appendSale(row) {
   fs.appendFileSync(paths.sales, `${line}\n`, 'utf8');
 }
 
-function soldNumbers() {
+async function appendSaleAsync(row) {
+  if (!hasSupabase) {
+    appendSale(row);
+    return row;
+  }
+  const inserted = await supabaseRequest('sales', {
+    method: 'POST',
+    body: [{ ...row, id: crypto.randomUUID() }],
+    prefer: 'return=representation'
+  });
+  return inserted[0];
+}
+
+async function soldNumbers() {
   const set = new Set();
-  for (const sale of readSales()) {
+  for (const sale of await readSalesAsync()) {
     const numbers = String(sale.numeros || '').match(/\b\d{5}\b/g) || [];
     numbers.forEach((number) => set.add(number));
   }
@@ -411,7 +515,7 @@ async function route(req, res) {
   try {
     if (req.url === '/api/login' && req.method === 'POST') {
       const body = JSON.parse(await readBody(req) || '{}');
-      const users = readJson(paths.users, { users: [] }).users;
+      const users = await readUsersAsync();
       const user = users.find((item) => item.username.toLowerCase() === String(body.username || '').toLowerCase());
       if (!user || user.passwordHash !== sha(body.password || '')) {
         json(res, 401, { error: 'Usuario o contraseña incorrectos' });
@@ -423,24 +527,27 @@ async function route(req, res) {
     }
 
     if (req.url === '/api/me' && req.method === 'GET') {
-      const user = requireAuth(req, res);
+      const user = await requireAuth(req, res);
       if (!user) return;
       json(res, 200, { user: { id: user.id, name: user.name, role: user.role, sellerCode: user.sellerCode } });
       return;
     }
 
     if (req.url === '/api/dashboard' && req.method === 'GET') {
-      const user = requireAuth(req, res);
+      const user = await requireAuth(req, res);
       if (!user) return;
-      const sales = filterByRole(user, readSales());
-      const sellers = user.role === 'admin' ? readSellers() : readSellers().filter((seller) => normalizeCode(seller.code) === normalizeCode(user.sellerCode));
-      const scans = readJson(paths.scans, { scans: [] }).scans || [];
+      const sales = filterByRole(user, await readSalesAsync());
+      const allSellers = await readSellersAsync();
+      const sellers = user.role === 'admin' ? allSellers : allSellers.filter((seller) => normalizeCode(seller.code) === normalizeCode(user.sellerCode));
+      const scans = hasSupabase
+        ? await supabaseRequest('qr_scans', { query: '?select=*&order=created_at.desc&limit=80' })
+        : readJson(paths.scans, { scans: [] }).scans || [];
       json(res, 200, { sales, sellers, scans: user.role === 'admin' ? scans.slice(-80) : [] });
       return;
     }
 
     if (req.url === '/api/sellers' && req.method === 'POST') {
-      const user = requireAuth(req, res, 'admin');
+      const user = await requireAuth(req, res, 'admin');
       if (!user) return;
       const body = JSON.parse(await readBody(req) || '{}');
       const code = normalizeCode(body.code || body.name);
@@ -453,32 +560,54 @@ async function route(req, res) {
         return;
       }
 
-      const sellers = readSellers();
+      const sellers = await readSellersAsync();
       if (sellers.some((seller) => normalizeCode(seller.code) === code)) {
         json(res, 409, { error: 'Ese codigo ya existe' });
         return;
       }
 
-      const usersData = readJson(paths.users, { users: [] });
-      if (usersData.users.some((item) => item.username.toLowerCase() === username)) {
+      const users = await readUsersAsync();
+      if (users.some((item) => item.username.toLowerCase() === username)) {
         json(res, 409, { error: 'Ese usuario ya existe' });
         return;
       }
 
       const seller = { id: crypto.randomUUID(), name, code, commission, createdAt: new Date().toISOString() };
-      sellers.push(seller);
-      usersData.users.push({ id: crypto.randomUUID(), name, username, role: 'seller', passwordHash: sha(password), sellerCode: code });
-      writeSellers(sellers);
-      writeJson(paths.users, usersData);
+      const appUser = { id: crypto.randomUUID(), name, username, role: 'seller', passwordHash: sha(password), sellerCode: code };
+      if (hasSupabase) {
+        await supabaseRequest('sellers', {
+          method: 'POST',
+          body: [{ id: seller.id, name, code, commission }],
+          prefer: 'return=representation'
+        });
+        await supabaseRequest('app_users', {
+          method: 'POST',
+          body: [{
+            id: appUser.id,
+            name: appUser.name,
+            username: appUser.username,
+            role: appUser.role,
+            password_hash: appUser.passwordHash,
+            seller_code: appUser.sellerCode
+          }],
+          prefer: 'return=representation'
+        });
+      } else {
+        const usersData = readJson(paths.users, { users: [] });
+        sellers.push(seller);
+        usersData.users.push(appUser);
+        writeSellers(sellers);
+        writeJson(paths.users, usersData);
+      }
       json(res, 201, { seller, login: { username, password } });
       return;
     }
 
     if (req.url === '/api/manual-sale' && req.method === 'POST') {
-      const user = requireAuth(req, res);
+      const user = await requireAuth(req, res);
       if (!user) return;
       const body = JSON.parse(await readBody(req) || '{}');
-      const sellers = readSellers();
+      const sellers = await readSellersAsync();
       const sellerCode = user.role === 'admin' ? normalizeCode(body.sellerCode) : normalizeCode(user.sellerCode);
       const seller = sellers.find((item) => normalizeCode(item.code) === sellerCode);
       if (!seller) {
@@ -494,7 +623,7 @@ async function route(req, res) {
         return;
       }
 
-      const used = soldNumbers();
+      const used = await soldNumbers();
       const numbers = Array.from({ length: quantity }, () => generateNumber(used));
       const pdfs = [];
       for (const number of numbers) {
@@ -502,7 +631,7 @@ async function route(req, res) {
       }
 
       const total = CONFIG.precio * quantity;
-      appendSale({
+      await appendSaleAsync({
         fecha: new Date().toLocaleString('es-PY'),
         vendedor: seller.name,
         codigo_vendedor: seller.code,
@@ -523,11 +652,11 @@ async function route(req, res) {
     }
 
     if (req.url === '/api/verify-ticket' && req.method === 'POST') {
-      const user = requireAuth(req, res, 'admin');
+      const user = await requireAuth(req, res, 'admin');
       if (!user) return;
       const body = JSON.parse(await readBody(req) || '{}');
       const parsed = parseTicketQr(body.qr);
-      const sale = readSales().find((row) => String(row.numeros || '').split(/\s+/).includes(parsed.number));
+      const sale = (await readSalesAsync()).find((row) => String(row.numeros || '').split(/\s+/).includes(parsed.number));
       const expectedSig = sale
         ? ticketSignature({
             number: parsed.number,
@@ -537,8 +666,10 @@ async function route(req, res) {
         : '';
       const hasSignature = Boolean(parsed.sig);
       const signatureOk = !hasSignature || parsed.sig.toUpperCase() === expectedSig;
-      const scansData = readJson(paths.scans, { scans: [] });
-      const previous = scansData.scans.filter((scan) => scan.number === parsed.number);
+      const scansData = hasSupabase ? { scans: [] } : readJson(paths.scans, { scans: [] });
+      const previous = hasSupabase
+        ? await supabaseRequest('qr_scans', { query: `?number=eq.${encodeURIComponent(parsed.number)}&select=*` })
+        : scansData.scans.filter((scan) => scan.number === parsed.number);
       const scan = {
         id: crypto.randomUUID(),
         number: parsed.number,
@@ -551,8 +682,26 @@ async function route(req, res) {
         date: new Date().toISOString(),
         by: user.name
       };
-      scansData.scans.push(scan);
-      writeJson(paths.scans, scansData);
+      if (hasSupabase) {
+        await supabaseRequest('qr_scans', {
+          method: 'POST',
+          body: [{
+            id: scan.id,
+            number: scan.number,
+            seller: scan.seller,
+            ci: scan.ci,
+            ok: scan.ok,
+            signed: scan.signed,
+            signature_ok: scan.signatureOk,
+            duplicate: scan.duplicate,
+            scanned_by: scan.by
+          }],
+          prefer: 'return=representation'
+        });
+      } else {
+        scansData.scans.push(scan);
+        writeJson(paths.scans, scansData);
+      }
       json(res, 200, { scan, sale: sale || null, previous });
       return;
     }
@@ -589,7 +738,15 @@ async function route(req, res) {
 
 const server = http.createServer(route);
 
-server.listen(port, () => {
-  console.log(`Sistema premium listo en http://localhost:${port}/premium/`);
-  console.log(`Usuario admin inicial: ${process.env.ADMIN_USER || 'admin'} / ${process.env.ADMIN_PASSWORD || 'admin123'}`);
-});
+ensureStorage()
+  .then(() => {
+    server.listen(port, () => {
+      console.log(`Sistema premium listo en http://localhost:${port}/premium/`);
+      console.log(hasSupabase ? 'Base de datos: Supabase' : 'Base de datos: archivos locales');
+      console.log(`Usuario admin: ${process.env.ADMIN_USER || 'admin'}`);
+    });
+  })
+  .catch((error) => {
+    console.error('No se pudo iniciar el sistema:', error.message);
+    process.exit(1);
+  });

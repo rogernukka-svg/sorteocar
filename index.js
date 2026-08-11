@@ -55,6 +55,9 @@ const ventasXlsxPath = path.join(__dirname, 'ventas.xlsx');
 const comprobantesUsadosPath = path.join(__dirname, 'comprobantes-usados.json');
 const vendedoresPath = path.join(__dirname, 'vendedores.json');
 const APP_SECRET = process.env.APP_SECRET || 'cambia-este-secreto-mino-goup';
+const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
+const tieneSupabase = Boolean(SUPABASE_URL && SUPABASE_KEY);
 
 for (const dir of [boletasDir, comprobantesDir]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -182,6 +185,27 @@ function cargarNumerosVendidosDesdeCsv() {
   console.log(`Numeros vendidos cargados: ${numerosVendidos.size}`);
 }
 
+async function cargarNumerosVendidosDesdeSupabase() {
+  if (!tieneSupabase) return;
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/sales?select=numeros`, {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    if (!response.ok) throw new Error(await response.text());
+    const rows = await response.json();
+    for (const row of rows) {
+      const numeros = String(row.numeros || '').match(/\b\d{5}\b/g) || [];
+      numeros.forEach((numero) => numerosVendidos.add(numero));
+    }
+    console.log(`Numeros vendidos sincronizados con Supabase: ${numerosVendidos.size}`);
+  } catch (error) {
+    console.error('No se pudieron cargar numeros desde Supabase:', error.message);
+  }
+}
+
 function guaranies(valor) {
   return new Intl.NumberFormat('es-PY').format(valor) + ' Gs.';
 }
@@ -271,20 +295,34 @@ function comisionVenta(cliente) {
   return Math.max(0, comision) * Number(cliente?.cantidad || 0);
 }
 
-function registrarLead(jid, vendedor, mensaje, estado = 'INICIO') {
+async function registrarLead(jid, vendedor, mensaje, estado = 'INICIO') {
   if (!vendedor) return;
   const fecha = new Date().toLocaleString('es-PY');
-  const linea = [
+  const row = {
+    id: crypto.randomUUID(),
     fecha,
-    vendedor.name || '',
-    vendedor.code || '',
-    telefonoVisible(jid.split('@')[0]),
-    String(mensaje || '').slice(0, 240),
+    vendedor: vendedor.name || '',
+    codigo_vendedor: vendedor.code || '',
+    telefono: telefonoVisible(jid.split('@')[0]),
+    mensaje: String(mensaje || '').slice(0, 240),
     estado
+  };
+  const linea = [
+    row.fecha,
+    row.vendedor,
+    row.codigo_vendedor,
+    row.telefono,
+    row.mensaje,
+    row.estado
   ]
     .map(csv)
     .join(',');
   fs.appendFileSync(leadsCsvPath, linea + '\n', 'utf8');
+  try {
+    await supabaseInsert('leads', row);
+  } catch (error) {
+    console.error('No se pudo guardar lead en Supabase:', error.message);
+  }
 }
 
 function generarNumero() {
@@ -320,6 +358,24 @@ function fechaArchivo() {
 function csv(valor) {
   const texto = String(valor ?? '');
   return `"${texto.replace(/"/g, '""')}"`;
+}
+
+async function supabaseInsert(table, row) {
+  if (!tieneSupabase) return;
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal'
+    },
+    body: JSON.stringify([row])
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Supabase ${response.status}`);
+  }
 }
 
 function totalEsperado(cliente) {
@@ -640,28 +696,49 @@ async function guardarComprobante(m, cliente) {
   return outPath;
 }
 
-function registrarVenta(cliente, boletas) {
+async function registrarVenta(cliente, boletas) {
   const total = totalEsperado(cliente);
   const fecha = new Date().toLocaleString('es-PY');
-  const linea = [
+  const row = {
+    id: crypto.randomUUID(),
     fecha,
-    vendedorVenta(cliente),
-    codigoVendedorVenta(cliente),
-    telefonoVisible(cliente.telefono),
-    cliente.nombre,
-    cliente.ci,
-    cliente.numeros.join(' '),
-    cliente.cantidad,
+    vendedor: vendedorVenta(cliente),
+    codigo_vendedor: codigoVendedorVenta(cliente),
+    telefono: telefonoVisible(cliente.telefono),
+    nombre: cliente.nombre,
+    ci: cliente.ci,
+    numeros: cliente.numeros.join(' '),
+    cantidad: cliente.cantidad,
     total,
-    comisionVenta(cliente),
-    cliente.montoPagado || '',
-    cliente.comprobantePath || '',
-    boletas.join(' | ')
+    comision: comisionVenta(cliente),
+    monto_pagado: cliente.montoPagado || total,
+    comprobante: cliente.comprobantePath || '',
+    boletas: boletas.join(' | ')
+  };
+  const linea = [
+    row.fecha,
+    row.vendedor,
+    row.codigo_vendedor,
+    row.telefono,
+    row.nombre,
+    row.ci,
+    row.numeros,
+    row.cantidad,
+    row.total,
+    row.comision,
+    row.monto_pagado,
+    row.comprobante,
+    row.boletas
   ]
     .map(csv)
     .join(',');
 
   fs.appendFileSync(ventasCsvPath, linea + '\n', 'utf8');
+  try {
+    await supabaseInsert('sales', row);
+  } catch (error) {
+    console.error('No se pudo guardar venta en Supabase:', error.message);
+  }
 }
 
 function configurarHojaVentas(sheet) {
@@ -1040,6 +1117,9 @@ async function enviarInicio(sock, jid) {
 }
 
 async function startBot() {
+  cargarNumerosVendidosDesdeCsv();
+  await cargarNumerosVendidosDesdeSupabase();
+
   const { state, saveCreds } = await useMultiFileAuthState('auth_info');
   const sock = makeWASocket({
     auth: state,
@@ -1084,7 +1164,7 @@ async function startBot() {
       const vendedorDetectado = detectarVendedor(text);
 
       if (vendedorDetectado && text) {
-        registrarLead(jid, vendedorDetectado, text, 'LINK_RECIBIDO');
+        await registrarLead(jid, vendedorDetectado, text, 'LINK_RECIBIDO');
       }
 
       if (!clientes.has(jid)) {
@@ -1278,7 +1358,7 @@ async function startBot() {
           });
         }
 
-        registrarVenta(cliente, boletasGeneradas);
+        await registrarVenta(cliente, boletasGeneradas);
         await registrarVentaExcel(cliente, boletasGeneradas);
 
         await sock.sendMessage(jid, {
@@ -1312,7 +1392,6 @@ if (process.env.PREVIEW_BOLETA === '1') {
     });
 } else {
   asegurarEncabezadoVentasCsv();
-  cargarNumerosVendidosDesdeCsv();
 
   startBot().catch((error) => {
     console.error('No se pudo iniciar el bot:', error);
