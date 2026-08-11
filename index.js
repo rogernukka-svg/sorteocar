@@ -203,7 +203,15 @@ function cargarVendedores() {
 function buscarVendedorPorCodigo(codigo) {
   const limpio = normalizarCodigo(codigo);
   if (!limpio) return null;
-  return cargarVendedores().find((seller) => normalizarCodigo(seller.code) === limpio) || null;
+  const vendedores = cargarVendedores();
+  return (
+    vendedores.find((seller) => normalizarCodigo(seller.code) === limpio) ||
+    vendedores.find((seller) => {
+      const code = normalizarCodigo(seller.code);
+      return code && (limpio.startsWith(code) || code.startsWith(limpio));
+    }) ||
+    null
+  );
 }
 
 function detectarVendedor(texto) {

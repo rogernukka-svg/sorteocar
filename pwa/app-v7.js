@@ -117,9 +117,19 @@ function renderSellers() {
 }
 
 function renderRanking() {
+  const directRows = sales.filter((sale) => saleCode(sale) === 'DIRECTO' || !saleCode(sale));
+  const direct = {
+    seller: { name: 'Venta directa' },
+    tickets: directRows.reduce((sum, sale) => sum + Number(pick(sale, ['cantidad', 'Cantidad'])), 0),
+    revenue: directRows.reduce((sum, sale) => sum + Number(pick(sale, ['total', 'Total Gs.'])), 0),
+    commission: 0
+  };
+
   const rows = sellers
     .map((seller) => ({ seller, ...sellerTotals(seller) }))
     .sort((a, b) => b.revenue - a.revenue);
+
+  if (direct.tickets > 0) rows.push(direct);
 
   $('#rankingList').innerHTML = rows.length
     ? rows
