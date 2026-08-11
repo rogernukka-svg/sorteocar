@@ -169,7 +169,12 @@ async function verifyQr(qr) {
   try {
     const data = await api('/api/verify-ticket', { method: 'POST', body: JSON.stringify({ qr }) });
     $('#qrResult').className = `result ${data.scan.ok && !data.scan.duplicate ? 'ok' : 'bad'}`;
-    $('#qrResult').innerHTML = `<strong>${data.scan.ok ? 'Boleta valida' : 'Boleta no encontrada'}</strong><div class="meta">Numero ${data.scan.number || 'sin numero'} · ${data.scan.seller || 'sin vendedor'}</div><div class="meta">${data.scan.duplicate ? 'ATENCION: este QR ya fue escaneado antes.' : 'Primer escaneo registrado.'}</div>`;
+    const security = data.scan.signed
+      ? data.scan.signatureOk
+        ? 'Firma segura correcta.'
+        : 'Firma incorrecta: posible QR adulterado.'
+      : 'Boleta antigua sin firma segura.';
+    $('#qrResult').innerHTML = `<strong>${data.scan.ok ? 'Boleta valida' : 'Boleta no encontrada o adulterada'}</strong><div class="meta">Numero ${data.scan.number || 'sin numero'} · ${data.scan.seller || 'sin vendedor'}</div><div class="meta">${security}</div><div class="meta">${data.scan.duplicate ? 'ATENCION: este QR ya fue escaneado antes.' : 'Primer escaneo registrado.'}</div>`;
   } catch (error) {
     toast(error.message);
   }

@@ -193,13 +193,20 @@ function sign(payload) {
 }
 
 function verifyToken(token) {
-  if (!token || !token.includes('.')) return null;
-  const [encoded, sig] = token.split('.');
-  const expected = crypto.createHmac('sha256', secret).update(encoded).digest('base64url');
-  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-  const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
-  if (payload.exp < Date.now()) return null;
-  return payload;
+  try {
+    if (!token || !token.includes('.')) return null;
+    const [encoded, sig] = token.split('.');
+    const expected = crypto.createHmac('sha256', secret).update(encoded).digest('base64url');
+    const sigBuffer = Buffer.from(sig || '');
+    const expectedBuffer = Buffer.from(expected);
+    if (sigBuffer.length !== expectedBuffer.length) return null;
+    if (!crypto.timingSafeEqual(sigBuffer, expectedBuffer)) return null;
+    const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    if (payload.exp < Date.now()) return null;
+    return payload;
+  } catch {
+    return null;
+  }
 }
 
 function getAuth(req) {
@@ -286,6 +293,15 @@ function generateNumber(used) {
   throw new Error('No quedan numeros disponibles');
 }
 
+function ticketSignature({ number, ci, sellerCode }) {
+  return crypto
+    .createHmac('sha256', secret)
+    .update(`${number}|${ci}|${normalizeCode(sellerCode)}`)
+    .digest('hex')
+    .slice(0, 16)
+    .toUpperCase();
+}
+
 function filterByRole(user, rows) {
   if (user.role === 'admin') return rows;
   const code = normalizeCode(user.sellerCode);
@@ -295,7 +311,8 @@ function filterByRole(user, rows) {
 async function generateTicketPdf({ number, customer, ci, phone, sellerName, sellerCode }) {
   const outPath = path.join(paths.tickets, `boleta-${number}.pdf`);
   const tel = String(phone || '').replace(/[^\d+]/g, '');
-  const qrData = `MINO-GOUP|NRO:${number}|CI:${ci}|TEL:${tel}|VENDEDOR:${sellerCode}`;
+  const sig = ticketSignature({ number, ci, sellerCode });
+  const qrData = `MINO-GOUP|NRO:${number}|CI:${ci}|TEL:${tel}|VENDEDOR:${sellerCode}|SIG:${sig}`;
   const qr = await QRCode.toBuffer(qrData, { width: 260, margin: 1 });
 
   await new Promise((resolve, reject) => {
@@ -372,13 +389,21 @@ function parseTicketQr(qr) {
   const number = text.match(/NRO:([0-9]{5})/i)?.[1] || text.match(/\b([0-9]{5})\b/)?.[1] || '';
   const ci = text.match(/CI:([^|]+)/i)?.[1] || '';
   const seller = text.match(/VENDEDOR:([^|]+)/i)?.[1] || '';
-  return { text, number, ci, seller };
+  const sig = text.match(/SIG:([^|]+)/i)?.[1] || '';
+  return { text, number, ci, seller, sig };
 }
 
 function safePath(urlPath) {
   const clean = decodeURIComponent(urlPath.split('?')[0]);
   const target = clean === '/' ? '/premium/index.html' : clean;
-  const filePath = path.normalize(path.join(root, target));
+  const allowed =
+    target === '/premium' ||
+    target.startsWith('/premium/') ||
+    target.startsWith('/assets/') ||
+    target.startsWith('/boletas/');
+  if (!allowed) return null;
+  const normalizedTarget = target === '/premium' ? '/premium/index.html' : target;
+  const filePath = path.normalize(path.join(root, normalizedTarget));
   return filePath.startsWith(root) ? filePath : null;
 }
 
@@ -503,6 +528,15 @@ async function route(req, res) {
       const body = JSON.parse(await readBody(req) || '{}');
       const parsed = parseTicketQr(body.qr);
       const sale = readSales().find((row) => String(row.numeros || '').split(/\s+/).includes(parsed.number));
+      const expectedSig = sale
+        ? ticketSignature({
+            number: parsed.number,
+            ci: sale.ci,
+            sellerCode: sale.codigo_vendedor
+          })
+        : '';
+      const hasSignature = Boolean(parsed.sig);
+      const signatureOk = !hasSignature || parsed.sig.toUpperCase() === expectedSig;
       const scansData = readJson(paths.scans, { scans: [] });
       const previous = scansData.scans.filter((scan) => scan.number === parsed.number);
       const scan = {
@@ -510,7 +544,9 @@ async function route(req, res) {
         number: parsed.number,
         seller: sale?.vendedor || parsed.seller || '',
         ci: sale?.ci || parsed.ci || '',
-        ok: Boolean(sale),
+        ok: Boolean(sale) && signatureOk,
+        signed: hasSignature,
+        signatureOk,
         duplicate: previous.length > 0,
         date: new Date().toISOString(),
         by: user.name

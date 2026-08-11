@@ -54,6 +54,7 @@ const leadsCsvPath = path.join(__dirname, 'leads.csv');
 const ventasXlsxPath = path.join(__dirname, 'ventas.xlsx');
 const comprobantesUsadosPath = path.join(__dirname, 'comprobantes-usados.json');
 const vendedoresPath = path.join(__dirname, 'vendedores.json');
+const APP_SECRET = process.env.APP_SECRET || 'cambia-este-secreto-mino-goup';
 
 for (const dir of [boletasDir, comprobantesDir]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -197,6 +198,15 @@ function normalizarCodigo(valor) {
     .replace(/[^a-zA-Z0-9]/g, '')
     .toUpperCase()
     .slice(0, 18);
+}
+
+function firmaBoleta({ nro, ci, codigoVendedor }) {
+  return crypto
+    .createHmac('sha256', APP_SECRET)
+    .update(`${nro}|${ci}|${normalizarCodigo(codigoVendedor || 'DIRECTO')}`)
+    .digest('hex')
+    .slice(0, 16)
+    .toUpperCase();
 }
 
 function cargarVendedores() {
@@ -826,10 +836,12 @@ async function enviarMarketing(sock, jid, textoExtra = '') {
   await sock.sendMessage(jid, { text: caption });
 }
 
-async function generarBoletaPdf({ cliente, ci, tel, nro, vendedor }) {
+async function generarBoletaPdf({ cliente, ci, tel, nro, vendedor, codigoVendedor }) {
   const telVisible = telefonoVisible(tel);
   const vendedorVisible = vendedor || 'Venta directa';
-  const qrData = `MINO-GOUP|NRO:${nro}|CI:${ci}|TEL:${telVisible}|VENDEDOR:${vendedorVisible}`;
+  const codigoVisible = normalizarCodigo(codigoVendedor || 'DIRECTO');
+  const sig = firmaBoleta({ nro, ci, codigoVendedor: codigoVisible });
+  const qrData = `MINO-GOUP|NRO:${nro}|CI:${ci}|TEL:${telVisible}|VENDEDOR:${codigoVisible}|SIG:${sig}`;
   const qrPng = await QRCode.toBuffer(qrData, { width: 260, margin: 1 });
   const outPath = path.join(boletasDir, `boleta-${nro}.pdf`);
 
@@ -1253,7 +1265,8 @@ async function startBot() {
             ci: cliente.ci,
             tel: cliente.telefono,
             nro,
-            vendedor: vendedorVenta(cliente)
+            vendedor: vendedorVenta(cliente),
+            codigoVendedor: codigoVendedorVenta(cliente)
           });
           boletasGeneradas.push(boleta);
 
@@ -1286,7 +1299,8 @@ if (process.env.PREVIEW_BOLETA === '1') {
     ci: '1234567',
     tel: '595994124451',
     nro: '12345',
-    vendedor: 'Vendedor Prueba'
+    vendedor: 'Vendedor Prueba',
+    codigoVendedor: 'PRUEBA'
   })
     .then((outPath) => {
       console.log(`Boleta de prueba generada: ${outPath}`);
