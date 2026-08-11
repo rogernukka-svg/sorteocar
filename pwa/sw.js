@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mino-goup-pwa-v5';
+const CACHE_NAME = 'mino-goup-pwa-v6';
 const ASSETS = [
   '/pwa/',
   '/pwa/index.html',

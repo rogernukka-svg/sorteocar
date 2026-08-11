@@ -25,14 +25,8 @@ function cleanCode(value) {
 }
 
 function sellerLink(seller) {
-  return `${window.location.origin}/v/${encodeURIComponent(seller.code)}`;
-}
-
-function shareSellerLink(seller) {
-  const text =
-    `Toyota Vitz 2013 en sorteo con ${CONFIG.brand}\n\n` +
-    `Compra desde este link:\n${sellerLink(seller)}`;
-  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+  const text = `Hola, quiero comprar boletas del sorteo ${CONFIG.brand}. Vendedor: ${seller.code}`;
+  return `https://wa.me/${CONFIG.botPhone}?text=${encodeURIComponent(text)}`;
 }
 
 function toast(text) {
@@ -248,7 +242,7 @@ document.addEventListener('click', async (event) => {
   if (!seller) return;
 
   if (event.target.dataset.copy) copyText(sellerLink(seller), 'Link copiado');
-  if (event.target.dataset.share) window.open(shareSellerLink(seller), '_blank', 'noopener');
+  if (event.target.dataset.share) window.open(sellerLink(seller), '_blank', 'noopener');
   if (event.target.dataset.remove) {
     await api(`/api/sellers/${encodeURIComponent(seller.id)}`, { method: 'DELETE' });
     await loadData();
