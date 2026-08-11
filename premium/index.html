@@ -115,7 +115,7 @@
             <button class="primary" id="startScanner">Escanear</button>
             <button class="ghost" id="stopScanner">Detener</button>
           </div>
-          <label>O pega el codigo QR<input id="qrManual" placeholder="MINO-GOUP|NRO:12345..." /></label>
+          <label>O pega el QR / numero de boleta<input id="qrManual" placeholder="Ej: 67787 o MINO-GOUP|NRO:67787..." /></label>
           <button class="primary" id="verifyManual">Verificar</button>
         </div>
         <div id="qrResult" class="result"></div>
@@ -123,6 +123,7 @@
     </main>
 
     <div id="toast" class="toast"></div>
+    <script src="/vendor/jsqr.js"></script>
     <script src="/premium/app.js"></script>
   </body>
 </html>

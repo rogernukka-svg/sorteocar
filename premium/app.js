@@ -178,26 +178,61 @@ async function verifyQr(qr) {
 $('#verifyManual').addEventListener('click', () => verifyQr($('#qrManual').value));
 
 $('#startScanner').addEventListener('click', async () => {
-  if (!('BarcodeDetector' in window)) {
-    toast('Este navegador no tiene lector QR automatico. Usa el campo manual.');
-    return;
-  }
-  stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-  $('#qrVideo').srcObject = stream;
-  await $('#qrVideo').play();
-  const detector = new BarcodeDetector({ formats: ['qr_code'] });
-  scanning = true;
-  const loop = async () => {
-    if (!scanning) return;
-    const codes = await detector.detect($('#qrVideo')).catch(() => []);
-    if (codes[0]?.rawValue) {
-      scanning = false;
-      verifyQr(codes[0].rawValue);
+  try {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast('Este equipo no habilita camara. Usa el campo manual.');
       return;
     }
-    requestAnimationFrame(loop);
-  };
-  loop();
+
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } }
+    });
+    const video = $('#qrVideo');
+    video.srcObject = stream;
+    await video.play();
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const detector = 'BarcodeDetector' in window
+      ? new BarcodeDetector({ formats: ['qr_code'] })
+      : null;
+
+    scanning = true;
+    toast('Camara activa. Apunta al QR de la boleta.');
+
+    const loop = async () => {
+      if (!scanning) return;
+
+      if (detector) {
+        const codes = await detector.detect(video).catch(() => []);
+        if (codes[0]?.rawValue) {
+          scanning = false;
+          verifyQr(codes[0].rawValue);
+          return;
+        }
+      }
+
+      if (window.jsQR && video.videoWidth && video.videoHeight) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = window.jsQR(image.data, image.width, image.height, {
+          inversionAttempts: 'dontInvert'
+        });
+        if (code?.data) {
+          scanning = false;
+          verifyQr(code.data);
+          return;
+        }
+      }
+
+      requestAnimationFrame(loop);
+    };
+    loop();
+  } catch (error) {
+    toast('No pude abrir la camara. Revisa permisos o usa el campo manual.');
+  }
 });
 
 $('#stopScanner').addEventListener('click', () => {

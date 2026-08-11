@@ -521,6 +521,18 @@ async function route(req, res) {
       return;
     }
 
+    if (req.url === '/vendor/jsqr.js' && req.method === 'GET') {
+      const filePath = path.join(root, 'node_modules', 'jsqr', 'dist', 'jsQR.js');
+      fs.readFile(filePath, (error, data) => {
+        if (error) {
+          send(res, 404, 'No encontrado');
+          return;
+        }
+        send(res, 200, data, 'application/javascript; charset=utf-8');
+      });
+      return;
+    }
+
     const filePath = safePath(req.url);
     if (!filePath) {
       send(res, 403, 'No permitido');
