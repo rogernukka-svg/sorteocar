@@ -59,11 +59,8 @@ async function api(path, options) {
 }
 
 async function loadData() {
-  const [sellerData, saleData, leadData] = await Promise.all([
-    api('/api/sellers'),
-    api('/api/sales'),
-    api('/api/leads')
-  ]);
+  const [sellerData, saleData] = await Promise.all([api('/api/sellers'), api('/api/sales')]);
+  const leadData = await api('/api/leads').catch(() => ({ leads: [] }));
   sellers = sellerData.sellers.filter((seller) => seller.code !== 'DEMO');
   sales = saleData.sales;
   leads = leadData.leads || [];
