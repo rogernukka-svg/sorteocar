@@ -1,9 +1,9 @@
-const CACHE_NAME = 'mino-goup-pwa-v6';
+const CACHE_NAME = 'mino-goup-pwa-v7';
 const ASSETS = [
   '/pwa/',
   '/pwa/index.html',
   '/pwa/styles.css',
-  '/pwa/app.js',
+  '/pwa/app-v7.js',
   '/pwa/manifest.webmanifest',
   '/assets/logo.png',
   '/assets/mino.png'
@@ -28,8 +28,6 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request);
-    })
+    fetch(event.request).catch(() => caches.match(event.request))
   );
 });
