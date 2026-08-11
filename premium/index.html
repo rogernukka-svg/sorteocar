@@ -10,18 +10,19 @@
   </head>
   <body>
     <main id="login" class="login">
-      <section class="login__brand">
-        <img src="/assets/logo.png" alt="Miño Goup" />
+      <section class="login__panel">
+        <img class="login__logo" src="/assets/logo.png" alt="Miño Goup" />
         <p>Sistema premium</p>
         <h1>Miño Goup</h1>
         <span>Toyota Vitz 2013 rojo candy</span>
+
+        <form class="login__form" id="loginForm">
+          <label>Usuario<input id="username" autocomplete="username" required /></label>
+          <label>Contraseña<input id="password" type="password" autocomplete="current-password" required /></label>
+          <button class="primary" type="submit">Entrar</button>
+          <small>Admin inicial: admin / admin123</small>
+        </form>
       </section>
-      <form class="login__form" id="loginForm">
-        <label>Usuario<input id="username" autocomplete="username" required /></label>
-        <label>Contraseña<input id="password" type="password" autocomplete="current-password" required /></label>
-        <button class="primary" type="submit">Entrar</button>
-        <small>Admin inicial: admin / admin123</small>
-      </form>
     </main>
 
     <main id="app" class="app" hidden>

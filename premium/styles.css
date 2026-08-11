@@ -15,23 +15,79 @@ button, input, select { font: inherit; }
 button { cursor: pointer; }
 
 .login, .app { width: min(980px, 100%); margin: 0 auto; padding: 16px; }
-.login { min-height: 100vh; display: grid; place-items: center; gap: 18px; }
-.login__brand, .login__form, .card, .metrics article, .result { background: rgba(255, 250, 240, 0.96); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 22px 60px rgba(0,0,0,.25); }
-.login__brand { width: min(430px, 100%); padding: 26px; text-align: center; }
-.login__brand img { width: 104px; height: 104px; object-fit: cover; border-radius: 14px; background: #000; animation: float 4s ease-in-out infinite; }
-.login__brand p, .card p, .hero p { margin: 0; color: var(--gold); font-weight: 800; text-transform: uppercase; font-size: 12px; }
-.login__brand h1 { margin: 10px 0 6px; font-size: 42px; letter-spacing: 0; }
-.login__brand span, .hero span, .meta { color: var(--muted); }
-.login__form { width: min(430px, 100%); padding: 18px; display: grid; gap: 12px; }
+.login {
+  width: 100%;
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+}
+.login::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, .58), rgba(0, 0, 0, .9)),
+    url("/assets/mino.png") center / cover no-repeat;
+  transform: scale(1.03);
+}
+.login::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 45%;
+  background: linear-gradient(0deg, #080808, transparent);
+}
+.login__panel {
+  width: min(410px, 100%);
+  position: relative;
+  z-index: 1;
+  padding: 22px;
+  border-radius: 18px;
+  border: 1px solid rgba(216, 167, 45, .45);
+  background: rgba(10, 10, 10, .78);
+  color: white;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .48);
+  backdrop-filter: blur(14px);
+}
+.login__logo {
+  width: 92px;
+  height: 92px;
+  display: block;
+  margin: 0 auto 12px;
+  object-fit: contain;
+  border-radius: 16px;
+  background: #050505;
+  padding: 8px;
+  border: 1px solid rgba(216, 167, 45, .42);
+  animation: float 4s ease-in-out infinite;
+}
+.login__panel p, .card p, .hero p { margin: 0; color: var(--gold); font-weight: 800; text-transform: uppercase; font-size: 12px; }
+.login__panel p, .login__panel h1, .login__panel > span { text-align: center; display: block; }
+.login__panel h1 { margin: 8px 0 6px; font-size: 40px; line-height: .95; letter-spacing: 0; }
+.login__panel > span { color: #e8dbc1; margin-bottom: 18px; }
+.hero span, .meta { color: var(--muted); }
+.login__form { display: grid; gap: 12px; }
+.login__form label { color: #f7ecd2; }
+.login__form input {
+  background: rgba(255, 255, 255, .96);
+  border-color: rgba(216, 167, 45, .52);
+}
+.login__form small {
+  color: #d9caa9;
+  text-align: center;
+}
 
 .topbar { height: 68px; display: flex; align-items: center; gap: 12px; color: white; }
-.topbar img { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; background: #000; }
+.topbar img { width: 48px; height: 48px; border-radius: 10px; object-fit: contain; padding: 4px; background: #000; }
 .topbar strong, .topbar span { display: block; }
 .topbar span { color: #ead9a2; font-size: 13px; }
 .topbar .ghost { margin-left: auto; }
 
-.hero { min-height: 300px; position: relative; overflow: hidden; border-radius: 16px; background: #000; margin-bottom: 14px; }
-.hero img { width: 100%; height: 100%; min-height: 300px; display: block; object-fit: cover; opacity: .92; }
+.hero { min-height: 260px; position: relative; overflow: hidden; border-radius: 16px; background: #000; margin-bottom: 14px; }
+.hero img { width: 100%; height: 100%; min-height: 260px; display: block; object-fit: cover; opacity: .92; }
 .hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent, rgba(0,0,0,.82)); }
 .hero div { position: absolute; left: 22px; right: 22px; bottom: 22px; z-index: 1; color: white; }
 .hero h1 { margin: 6px 0; font-size: clamp(34px, 8vw, 64px); line-height: .95; letter-spacing: 0; }
@@ -68,4 +124,11 @@ input, select { width: 100%; min-height: 46px; border-radius: 10px; border: 1px 
 .toast.is-visible { opacity: 1; transform: translateY(0); }
 
 @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-@media (max-width: 640px) { .tabs, .metrics, .two { grid-template-columns: 1fr; } .hero { min-height: 360px; } .hero img { min-height: 360px; } }
+@media (max-width: 640px) {
+  .app { padding: 12px; }
+  .tabs, .metrics, .two { grid-template-columns: 1fr; }
+  .hero { min-height: 240px; }
+  .hero img { min-height: 240px; }
+  .hero h1 { font-size: 34px; }
+  .login__panel { padding: 20px; }
+}
