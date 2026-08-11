@@ -10,6 +10,7 @@ const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
 let sellers = [];
 let sales = [];
+let leads = [];
 
 function money(value) {
   return `${new Intl.NumberFormat('es-PY').format(Number(value) || 0)} Gs.`;
@@ -58,9 +59,14 @@ async function api(path, options) {
 }
 
 async function loadData() {
-  const [sellerData, saleData] = await Promise.all([api('/api/sellers'), api('/api/sales')]);
+  const [sellerData, saleData, leadData] = await Promise.all([
+    api('/api/sellers'),
+    api('/api/sales'),
+    api('/api/leads')
+  ]);
   sellers = sellerData.sellers.filter((seller) => seller.code !== 'DEMO');
   sales = saleData.sales;
+  leads = leadData.leads || [];
   renderAll();
 }
 
@@ -71,7 +77,9 @@ function saleCode(sale) {
 function sellerTotals(seller) {
   const code = cleanCode(seller.code);
   const rows = sales.filter((sale) => saleCode(sale) === code);
+  const sellerLeads = leads.filter((lead) => cleanCode(pick(lead, ['codigo_vendedor'])) === code);
   return {
+    leads: sellerLeads.length,
     tickets: rows.reduce((sum, sale) => sum + Number(pick(sale, ['cantidad', 'Cantidad'])), 0),
     revenue: rows.reduce((sum, sale) => sum + Number(pick(sale, ['total', 'Total Gs.'])), 0),
     commission: rows.reduce((sum, sale) => sum + Number(pick(sale, ['comision', 'Comision Gs.'])), 0)
@@ -104,7 +112,7 @@ function renderSellers() {
       return `
         <article class="seller-item">
           <strong>${seller.name}</strong>
-          <div class="meta">Codigo ${seller.code} · ${total.tickets} boletas · ${money(total.commission)} comision</div>
+          <div class="meta">Codigo ${seller.code} · ${total.leads} interesados · ${total.tickets} boletas · ${money(total.commission)} comision</div>
           <div class="actions">
             <button class="primary" data-share="${seller.id}">Enviar por WhatsApp</button>
             <button class="soft" data-copy="${seller.id}">Copiar link</button>

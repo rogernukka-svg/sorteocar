@@ -50,6 +50,7 @@ const numerosVendidos = new Set();
 const boletasDir = path.join(__dirname, 'boletas');
 const comprobantesDir = path.join(__dirname, 'comprobantes');
 const ventasCsvPath = path.join(__dirname, 'ventas.csv');
+const leadsCsvPath = path.join(__dirname, 'leads.csv');
 const ventasXlsxPath = path.join(__dirname, 'ventas.xlsx');
 const comprobantesUsadosPath = path.join(__dirname, 'comprobantes-usados.json');
 const vendedoresPath = path.join(__dirname, 'vendedores.json');
@@ -76,6 +77,14 @@ if (!fs.existsSync(comprobantesUsadosPath)) {
 
 if (!fs.existsSync(vendedoresPath)) {
   fs.writeFileSync(vendedoresPath, JSON.stringify({ sellers: [] }, null, 2), 'utf8');
+}
+
+if (!fs.existsSync(leadsCsvPath)) {
+  fs.writeFileSync(
+    leadsCsvPath,
+    'fecha,vendedor,codigo_vendedor,telefono,mensaje,estado\n',
+    'utf8'
+  );
 }
 
 function parseCsvLine(linea) {
@@ -250,6 +259,22 @@ function codigoVendedorVenta(cliente) {
 function comisionVenta(cliente) {
   const comision = Number(cliente?.vendedor?.commission || 0);
   return Math.max(0, comision) * Number(cliente?.cantidad || 0);
+}
+
+function registrarLead(jid, vendedor, mensaje, estado = 'INICIO') {
+  if (!vendedor) return;
+  const fecha = new Date().toLocaleString('es-PY');
+  const linea = [
+    fecha,
+    vendedor.name || '',
+    vendedor.code || '',
+    telefonoVisible(jid.split('@')[0]),
+    String(mensaje || '').slice(0, 240),
+    estado
+  ]
+    .map(csv)
+    .join(',');
+  fs.appendFileSync(leadsCsvPath, linea + '\n', 'utf8');
 }
 
 function generarNumero() {
@@ -1046,6 +1071,10 @@ async function startBot() {
       const image = m.message?.imageMessage;
       const vendedorDetectado = detectarVendedor(text);
 
+      if (vendedorDetectado && text) {
+        registrarLead(jid, vendedorDetectado, text, 'LINK_RECIBIDO');
+      }
+
       if (!clientes.has(jid)) {
         clientes.set(jid, {
           step: 'NUEVO',
@@ -1055,6 +1084,17 @@ async function startBot() {
       }
 
       const cliente = clientes.get(jid);
+      if (vendedorDetectado && ['FINALIZADO', 'NUEVO', 'INICIO'].includes(cliente.step)) {
+        limpiarCliente(jid);
+        clientes.set(jid, {
+          step: 'INICIO',
+          telefono: jid.split('@')[0],
+          vendedor: vendedorDetectado
+        });
+        await enviarInicio(sock, jid);
+        continue;
+      }
+
       if (vendedorDetectado) cliente.vendedor = vendedorDetectado;
       console.log(`[${cliente.step}] ${jid}: ${text || image ? 'mensaje recibido' : 'sin texto'}`);
 

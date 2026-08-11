@@ -4,6 +4,7 @@ boletas/
 comprobantes/
 ventas.csv
 ventas.xlsx
+leads.csv
 comprobantes-usados.json
 .env
 npm-debug.log*

@@ -27,6 +27,13 @@
       "code": "RICHARASDAS",
       "commission": 200,
       "createdAt": "2026-08-11T20:48:08.530Z"
+    },
+    {
+      "id": "9f88f4da-0356-4a03-bcb9-ebe8599e0a48",
+      "name": "Richar",
+      "code": "RICHAR111",
+      "commission": 200,
+      "createdAt": "2026-08-11T20:50:09.361Z"
     }
   ]
 }

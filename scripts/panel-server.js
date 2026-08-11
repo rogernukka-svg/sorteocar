@@ -7,6 +7,7 @@ const root = path.join(__dirname, '..');
 const port = Number(process.env.PANEL_PORT || 5176);
 const vendedoresPath = path.join(root, 'vendedores.json');
 const ventasCsvPath = path.join(root, 'ventas.csv');
+const leadsCsvPath = path.join(root, 'leads.csv');
 
 const types = {
   '.html': 'text/html; charset=utf-8',
@@ -154,6 +155,22 @@ function leerVentas() {
   });
 }
 
+function leerLeads() {
+  if (!fs.existsSync(leadsCsvPath)) return [];
+  const lineas = fs.readFileSync(leadsCsvPath, 'utf8').split(/\r?\n/).filter(Boolean);
+  if (lineas.length < 2) return [];
+
+  const headers = parseCsvLine(lineas[0]).map((header) => header.trim());
+  return lineas.slice(1).map((linea) => {
+    const columnas = parseCsvLine(linea);
+    const row = {};
+    headers.forEach((header, index) => {
+      row[header] = columnas[index] || '';
+    });
+    return row;
+  });
+}
+
 function vendedorPorCodigo(codigo) {
   const limpio = normalizarCodigo(codigo);
   return leerVendedores().find((seller) => normalizarCodigo(seller.code) === limpio) || null;
@@ -263,6 +280,11 @@ const server = http.createServer((req, res) => {
 
   if (req.url === '/api/sales' && req.method === 'GET') {
     json(res, 200, { sales: leerVentas() });
+    return;
+  }
+
+  if (req.url === '/api/leads' && req.method === 'GET') {
+    json(res, 200, { leads: leerLeads() });
     return;
   }
 
