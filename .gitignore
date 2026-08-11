@@ -1,0 +1,9 @@
+node_modules/
+auth_info/
+boletas/
+comprobantes/
+ventas.csv
+ventas.xlsx
+comprobantes-usados.json
+.env
+npm-debug.log*

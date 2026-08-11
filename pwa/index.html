@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b0b0b" />
+    <title>Miño Goup | Ventas</title>
+    <link rel="manifest" href="/pwa/manifest.webmanifest" />
+    <link rel="stylesheet" href="/pwa/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <img src="/assets/logo.png" alt="Miño Goup" />
+        <div>
+          <strong>Miño Goup</strong>
+          <span>Vendedores</span>
+        </div>
+        <button class="soft install" id="installButton" hidden>Instalar</button>
+      </header>
+
+      <section class="cover">
+        <img src="/assets/mino.png" alt="Toyota Vitz 2013" />
+        <div class="cover__text">
+          <span>Sorteo activo</span>
+          <h1>Toyota Vitz 2013</h1>
+          <p>Links de vendedores, ventas y comisiones en un solo lugar.</p>
+        </div>
+      </section>
+
+      <section class="status">
+        <article>
+          <span>Panel</span>
+          <strong>Listo</strong>
+        </article>
+        <article>
+          <span>WhatsApp</span>
+          <strong>Bot abierto para responder</strong>
+        </article>
+      </section>
+
+      <section class="steps">
+        <button class="step is-active" data-view="share">
+          <span>1</span>
+          Compartir link
+        </button>
+        <button class="step" data-view="sell">
+          <span>2</span>
+          Vender
+        </button>
+        <button class="step" data-view="control">
+          <span>3</span>
+          Controlar
+        </button>
+      </section>
+
+      <section class="view is-visible" id="share">
+        <div class="card">
+          <div class="card__head">
+            <div>
+              <p>Vendedor</p>
+              <h2>Crear y compartir</h2>
+            </div>
+          </div>
+
+          <form class="form compact" id="sellerForm">
+            <label>
+              Nombre del vendedor
+              <input id="sellerName" placeholder="Ej: Juan" required />
+            </label>
+            <div class="two">
+              <label>
+                Codigo
+                <input id="sellerCode" placeholder="JUAN" required />
+              </label>
+              <label>
+                Gana por boleta
+                <input id="sellerCommission" type="number" min="0" step="100" value="200" required />
+              </label>
+            </div>
+            <button class="primary" type="submit">Guardar vendedor</button>
+          </form>
+        </div>
+
+        <div class="seller-list" id="sellerList"></div>
+      </section>
+
+      <section class="view" id="sell">
+        <div class="card">
+          <div class="card__head">
+            <div>
+              <p>Venta segura</p>
+              <h2>El cliente compra por WhatsApp</h2>
+            </div>
+          </div>
+          <div class="simple-flow">
+            <article>
+              <strong>1. El vendedor comparte su link</strong>
+              <span>Ese link lleva su codigo adentro.</span>
+            </article>
+            <article>
+              <strong>2. El comprador escribe al bot</strong>
+              <span>El bot detecta el vendedor y reserva numeros unicos.</span>
+            </article>
+            <article>
+              <strong>3. La boleta queda marcada</strong>
+              <span>PDF, Excel y panel muestran quien vendio.</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="control">
+        <div class="summary">
+          <article>
+            <span>Vendido</span>
+            <strong id="metricRevenue">0 Gs.</strong>
+          </article>
+          <article>
+            <span>Boletas</span>
+            <strong id="metricTickets">0</strong>
+          </article>
+          <article>
+            <span>Comision</span>
+            <strong id="metricCommission">0 Gs.</strong>
+          </article>
+        </div>
+
+        <div class="card">
+          <div class="card__head">
+            <div>
+              <p>Ranking</p>
+              <h2>Quien vendio mas</h2>
+            </div>
+          </div>
+          <div class="ranking" id="rankingList"></div>
+        </div>
+
+        <div class="card">
+          <div class="card__head">
+            <div>
+              <p>Planilla</p>
+              <h2>Ventas</h2>
+            </div>
+            <button class="soft" id="exportCsv">Exportar</button>
+          </div>
+          <div class="sales-list" id="salesList"></div>
+        </div>
+      </section>
+
+      <section class="card marketing">
+        <div>
+          <p>Marketing listo</p>
+          <h2>Texto para estados</h2>
+        </div>
+        <button class="soft" id="copyCampaign">Copiar</button>
+      </section>
+    </main>
+
+    <div class="toast" id="toast"></div>
+    <script src="/pwa/app.js"></script>
+  </body>
+</html>

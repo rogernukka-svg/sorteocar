@@ -1,0 +1,18 @@
+{
+  "sellers": [
+    {
+      "id": "f6358d56-3292-441f-a72e-b6d14310ea24",
+      "name": "Roger Nuñez",
+      "code": "ROGERNUNEZ",
+      "commission": 200,
+      "createdAt": "2026-08-11T20:30:51.916Z"
+    },
+    {
+      "id": "a74e6834-d12d-4feb-aea1-09e7905d1fe3",
+      "name": "Luis Miño",
+      "code": "LUISMINO",
+      "commission": 200,
+      "createdAt": "2026-08-11T20:34:36.340Z"
+    }
+  ]
+}
